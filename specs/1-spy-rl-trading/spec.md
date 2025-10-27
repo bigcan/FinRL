@@ -63,26 +63,27 @@ Sharpe ratio), (5) Comparing to buy-and-hold baseline.
 
 ---
 
-### User Story 3 - Hyperparameter Exploration and Model Selection (Priority: P3)
+### User Story 3 - PPO Hyperparameter Tuning and Optimization (Priority: P3)
 
-A researcher wants to experiment with different DRL algorithms (PPO, A2C, TD3) and hyperparameter
-configurations to find the best performing agent. The system should support switching between algorithms
-and tuning reward parameters (e.g., risk aversion weights) while maintaining consistent environment behavior.
+A researcher wants to experiment with different PPO hyperparameter configurations (learning rate, clip ratio,
+entropy coefficient) to find the optimal agent for SPY trading. The system should support tuning key PPO
+parameters while maintaining consistent environment behavior and tracking convergence metrics.
 
-**Why this priority**: This enables advanced users to optimize strategy performance. It's important but
-not essential for initial system capability.
+**Why this priority**: This enables advanced users to optimize strategy performance through hyperparameter
+tuning. It's important but not essential for initial system capability; PPO with default settings achieves
+baseline profitability.
 
-**Independent Test**: Can be fully tested by: (1) Training agents with different hyperparameters,
-(2) Comparing reward curves across runs, (3) Identifying highest Sharpe ratio configuration,
+**Independent Test**: Can be fully tested by: (1) Training PPO agents with different hyperparameters,
+(2) Comparing reward curves and Sharpe ratios across runs, (3) Identifying optimal configuration,
 (4) Validating reproducibility with fixed random seed.
 
 **Acceptance Scenarios**:
 
-1. **Given** multiple hyperparameter configurations (e.g., learning rate: 1e-3, 1e-4, 1e-5),
-   **When** training separate agents with each config on same data,
-   **Then** system allows side-by-side comparison of reward curves
+1. **Given** multiple PPO hyperparameter configurations (e.g., learning rate: 1e-3, 1e-4, 1e-5; clip ratio: 0.2, 0.3),
+   **When** training separate PPO agents with each config on same data,
+   **Then** system allows side-by-side comparison of reward curves and test Sharpe ratios
 
-2. **Given** a preferred agent (highest Sharpe ratio),
+2. **Given** a preferred PPO agent (highest Sharpe ratio on test data),
    **When** user saves and loads agent from disk,
    **Then** loaded agent produces identical trading signals on same data
 
@@ -110,7 +111,7 @@ not essential for initial system capability.
 
 - **FR-005**: System MUST compute rewards as log returns (log(P_t / P_{t-1})) at each daily timestep, scaled by position (long/flat) to reflect realized profit/loss
 
-- **FR-006**: System MUST integrate with ElegantRL, Stable-Baselines3, and RLlib agents, allowing seamless algorithm switching (PPO, A2C, TD3, DDPG) via configuration
+- **FR-006**: System MUST implement PPO (Proximal Policy Optimization) agent via Stable-Baselines3 library, supporting configurable hyperparameters (learning rate, clip ratio, entropy coefficient, batch size, n_steps)
 
 - **FR-007**: System MUST save trained agent models to disk and restore them without degradation (deterministic loading with same random seed)
 
@@ -130,7 +131,7 @@ not essential for initial system capability.
 
 - **Trading Environment**: Gymnasium-compliant simulator that executes discrete actions in a market, tracks portfolio balance and shares held, computes log-return rewards
 
-- **DRL Agent**: Neural network policy (trained via PPO/A2C/TD3) that maps observed state to action distribution, learns to maximize cumulative log returns
+- **DRL Agent (PPO)**: Neural network policy trained via Proximal Policy Optimization that maps observed state (price, indicators) to discrete action distribution (buy/hold/sell probabilities), learns to maximize cumulative log returns through policy gradient updates with clipped objective
 
 - **Trading Decision**: Tuple of (action, position, log_return) where action ∈ {buy, hold, sell}, position reflects current holdings (1=long, 0=flat), reward is realized daily log return
 
@@ -148,7 +149,7 @@ not essential for initial system capability.
 
 - **SC-004**: Risk-Adjusted Performance: Agent's Sharpe ratio on test data is ≥0.5 (measurable excess return per unit volatility vs. buy-and-hold baseline)
 
-- **SC-005**: Algorithm Flexibility: System supports training with ≥3 DRL algorithms (PPO, A2C, one additional), all converging to >0% return within 20% variance of each other
+- **SC-005**: PPO Hyperparameter Robustness: System successfully trains PPO agents with 3+ different hyperparameter configurations (learning rate, clip ratio), all converging to >0% return with test Sharpe ratios within ±15% of mean (indicating robust algorithm performance)
 
 - **SC-006**: Model Reproducibility: Trained agent loaded from disk produces identical trading signals (±0 difference) when run on same test data with identical random seed
 
@@ -168,7 +169,8 @@ not essential for initial system capability.
 - Discrete action space (buy/hold/sell) is adequate; continuous position sizing (e.g., portfolio %) deferred
 - Buy and sell actions execute at daily close price without slippage modeling (realistic slippage can be added later)
 - Historical SPY data reflects real market conditions without structural breaks; 2020-2025 period chosen to include COVID crisis and post-pandemic recovery
-- DRL agents require ≥1 year (252+ trading days) of training data to learn meaningful patterns
+- PPO algorithm (Proximal Policy Optimization) is suitable for discrete action trading tasks; default hyperparameters from Stable-Baselines3 provide reasonable starting point
+- PPO requires ≥1 year (252+ trading days) of training data to learn meaningful patterns; 5 years (2020-2024) provides ample training signal
 - Technical indicators (SMA, RSI, MACD) standardized in `config.py` INDICATORS list are sufficient for agent observation
 
 ## Constraints
@@ -178,10 +180,11 @@ not essential for initial system capability.
 - System must not use future data (no lookahead bias in any backtest or evaluation)
 - Agent must operate on daily frequency without intraday state (daily close prices only)
 
-## Out of Scope (Explicitly Excluded)
+## Out of Scope (Explicitly Excluded / Deferred)
 
+- Alternative DRL algorithms (A2C, TD3, DDPG, etc.) [deferred to v2.0; PPO is proven for discrete trading]
 - Real-time paper trading with Alpaca (deferred to v2.0)
 - Risk management features (stop-loss, position limits) [will be environment variants in future releases]
-- Multi-asset portfolio optimization (SPY only for v1.0)
-- Factor/sentiment analysis (pure price-based features for v1.0)
+- Multi-asset portfolio optimization (SPY only for v1.0; multi-asset strategies deferred)
+- Factor/sentiment analysis (pure price-based technical indicators for v1.0)
 - Portfolio rebalancing (single-asset strategy)
