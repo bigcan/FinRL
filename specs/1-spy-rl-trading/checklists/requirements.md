@@ -32,12 +32,19 @@
 
 ## Notes
 
-- **Status**: All checklist items PASS
+- **Status**: All checklist items PASS (updated for PPO focus)
 - **Readiness**: Specification is complete and ready for `/speckit.clarify` (optional) or `/speckit.plan` (recommended next step)
-- **Quality Assessment**: High-quality specification with clear requirements, testable scenarios, and explicit scope boundaries
-- **Deferred Items**: Properly categorized under Out-of-Scope (real-time trading, multi-asset portfolio, advanced risk management)
-- **Assumptions Validation**: All assumptions are reasonable for v1.0 MVP (can revisit in future iterations)
+- **Quality Assessment**: High-quality specification with clear PPO-specific requirements, testable scenarios, and explicit scope boundaries
+- **Algorithm Choice**: PPO (Proximal Policy Optimization) via Stable-Baselines3 selected as primary agent for discrete action trading (well-suited for this domain)
+- **Deferred Items**: Properly categorized under Out-of-Scope (alternative algorithms v2.0, real-time trading, multi-asset portfolio, advanced risk management)
+- **Assumptions Validation**: All assumptions validated for v1.0 MVP with PPO focus (can revisit alternative algorithms in future iterations)
+- **Updates Made**:
+  - User Story 3: PPO hyperparameter tuning focus
+  - FR-006: PPO via Stable-Baselines3 with tunable hyperparameters
+  - SC-005: PPO robustness across hyperparameter configurations
+  - Key Entities: PPO-specific neural network policy description
+  - Assumptions: PPO suitability and training data requirements added
 
 **Approved by**: Claude Code Specification Engine
-**Date**: 2025-10-27
+**Last Updated**: 2025-10-27 (PPO focus)
 **Recommendation**: Proceed to `/speckit.plan` to generate implementation design
