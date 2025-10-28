@@ -147,3 +147,11 @@ papertrading_test.py
 alpaca_processor_test.py
 /finrl/config_private.py
 .history/
+
+# SPY RL Trading System
+tensorboard_logs/
+trained_models/
+datasets/
+*.h5
+*.pkl
+*.model

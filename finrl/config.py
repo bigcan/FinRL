@@ -59,6 +59,55 @@ ERL_PARAMS = {
 }
 RLlib_PARAMS = {"lr": 5e-5, "train_batch_size": 500, "gamma": 0.99}
 
+# SPY RL Trading System Configuration
+SPY_SYMBOL = "SPY"
+SPY_TRAIN_START = "2020-01-01"
+SPY_TRAIN_END = "2024-12-31"
+SPY_TEST_START = "2025-01-01"
+SPY_TEST_END = "2025-12-31"
+
+SPY_INDICATORS = [
+    "macd",
+    "boll_ub",
+    "boll_lb",
+    "rsi_30",
+    "cci_30",
+    "dx_30",
+    "close_30_sma",
+    "close_60_sma",
+    "vix",  # Volatility Index for market regime detection
+]
+
+SPY_CONFIG = {
+    "ticker": "SPY",
+    "initial_amount": 100000,  # $100k starting capital
+    "buy_cost_pct": 0.001,  # 0.1% transaction cost
+    "sell_cost_pct": 0.001,
+    "hmax": 1,  # Max shares per action (discrete: 0 or 1 unit)
+    "reward_scaling": 1.0,
+    "state_space": 13,  # [balance, shares, price, 10 indicators, turbulence]
+    "action_space": 3,  # {0: BUY, 1: HOLD, 2: SELL}
+}
+
+# PPO params for SPY discrete trading (from research.md)
+SPY_PPO_PARAMS = {
+    "n_steps": 2048,  # ~8 trading years
+    "batch_size": 64,
+    "n_epochs": 10,
+    "learning_rate": 3e-4,  # Conservative for noisy financial data
+    "clip_range": 0.2,  # Standard PPO clip ratio
+    "clip_range_vf": 0.1,
+    "ent_coef": 0.01,  # Low entropy for exploitation
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "gae_lambda": 0.95,
+    "use_sde": False,
+    "target_kl": 0.01,  # Early stopping for stability
+    "policy_kwargs": {
+        "net_arch": [256, 256],  # Moderate capacity
+    },
+}
+
 
 # Possible time zones
 TIME_ZONE_SHANGHAI = "Asia/Shanghai"  # Hang Seng HSI, SSE, CSI
