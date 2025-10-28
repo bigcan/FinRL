@@ -298,3 +298,10 @@ train(
 - Check TensorBoard logs: `tensorboard --logdir tensorboard_log`
 - Enable verbose logging in environment `__init__` methods
 - Validate data shapes after `df_to_array()` conversion
+
+## Active Technologies
+- Python 3.10+ (FinRL requirement) (1-spy-rl-trading)
+- CSV/Parquet files (local disk) for historical OHLCV data and trained models; TensorBoard logs for training artifacts (1-spy-rl-trading)
+
+## Recent Changes
+- 1-spy-rl-trading: Added Python 3.10+ (FinRL requirement)

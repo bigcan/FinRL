@@ -23,7 +23,7 @@ agent using a discrete action space (buy/hold/sell), (3) Observing converging re
 
 **Acceptance Scenarios**:
 
-1. **Given** historical SPY daily OHLCV data for 2020-2025, **When** agent trains for N episodes,
+1. **Given** historical SPY daily OHLCV data for 2020-2025/, **When** agent trains for N episodes,
    **Then** agent achieves cumulative log-return >0 (profitable on training set)
 
 2. **Given** a trained agent, **When** system evaluates actions at each trading day,
@@ -137,29 +137,55 @@ baseline profitability.
 
 - **Backtest Result**: Record of agent performance on test data including cumulative return %, max drawdown %, Sharpe ratio, win rate (% days with positive return)
 
+## Trading Mechanics & Reward Model
+
+- **Execution timeline**: At trading day `t`, the agent observes features derived from prices up to the close of `t`. The chosen action is executed at the close of `t`, and the reward uses the log return between `close_t` and `close_{t+1}` that materializes overnight. No future bars (price or indicators) are accessible prior to reward computation.
+- **Action semantics**: Discrete actions are {`buy`, `hold`, `sell`}. `buy` transitions the portfolio from flat to long one unit; repeated `buy` while already long is treated as a no-op. `sell` closes an existing long to flat; short positions are out of scope and rejected with a warning in debug mode. `hold` maintains the prior position. Invalid transitions never mutate state.
+- **Position sizing & inventory**: Positions represent a single unit of SPY (1 share). All cash that is not used to hold the unit remains in the cash component; leverage and partial fills are out of scope. Initial state starts with 1 unit of purchasable cash and zero holdings.
+- **Reward function**: `log_ret_t = ln(close_{t+1} / close_t)`. Per-step reward is `reward_t = position_t * log_ret_t - cost_t` where `position_t ∈ {0, 1}`. Transaction cost per edge defaults to 2 bps (1 bps buy + 1 bps sell) and is configurable. Rewards are zero when flat.
+- **Transaction costs**: Costs are applied only when the action triggers a position change. Cost parameters are supplied via environment kwargs and default to `buy_cost_bps=1`, `sell_cost_bps=1`. The buy-and-hold baseline uses identical costs to ensure fair comparisons.
+- **Data preprocessing**: Indicators are computed on adjusted close prices with rolling windows that only reference historical data (right-aligned, `closed='left'`). Indicator joins preserve the trading-day index; calendar gaps (weekends/holidays) remain in the index with forward-filled indicators while price stays NaN and the step is skipped.
+- **State normalization**: Continuous observations (prices, indicators) are z-scored using statistics fit on the training window and reused for validation/test to prevent leakage. Normalization parameters are serialized alongside the trained model.
+
+## Backtest Integrity Requirements
+
+- **Lookahead guard**: Unit tests assert that the environment never queries `t+1` data prior to calling `step(...)`, and that rewards use only post-action information.
+- **Cash & PnL accounting**: Portfolio net asset value (NAV) updates as `cash + position * close_t`. NAV snapshots, realized PnL, and cost accrual are written per step for plotting and regression tests.
+- **Baseline alignment**: The buy-and-hold benchmark uses the same adjusted data, transaction costs, and rebalance cadence as the agent pipeline.
+- **Failure handling**: Missing price bars result in skipping the trading step and logging a warning; agents continue with the next available day.
+
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: Data Loading: System successfully loads SPY daily OHLCV data for 2020-2025 without errors, with >99% data completeness (missing ≤5 trading days per year)
+- **SC-001 (Gate)**: Data Loading — system loads SPY daily OHLCV data for 2020-2025 without errors, with >99% data completeness (missing ≤5 trading days per calendar year).
 
-- **SC-002**: Training Convergence: After training on 2020-2024 data for 100K-500K timesteps, agent achieves cumulative log return >5% (annual ~1% minimum) on training set
+- **SC-002 (Gate)**: Training Convergence — after training on 2020-2024 data for 100K-500K timesteps, agent achieves cumulative log return >5% on the training window; runs that miss the mark must be diagnosed before release.
 
-- **SC-003**: Test Generalization: Trained agent on 2020-2024 data achieves >0% cumulative return on held-out 2025 test data (basic profitability on unseen data)
+- **SC-003 (Gate)**: Test Generalization — trained agent on 2020-2024 data delivers ≥0% cumulative return on the held-out 2025 window.
 
-- **SC-004**: Risk-Adjusted Performance: Agent's Sharpe ratio on test data is ≥0.5 (measurable excess return per unit volatility vs. buy-and-hold baseline)
+- **SC-004 (Target)**: Risk-Adjusted Performance — agent Sharpe ratio on test data is ≥0.5 (daily returns annualized with √252) and exceeds the buy-and-hold Sharpe. Failing the target triggers a follow-up investigation but is not a blocker for the initial release.
 
-- **SC-005**: PPO Hyperparameter Robustness: System successfully trains PPO agents with 3+ different hyperparameter configurations (learning rate, clip ratio), all converging to >0% return with test Sharpe ratios within ±15% of mean (indicating robust algorithm performance)
+- **SC-005 (Target)**: PPO Hyperparameter Robustness — three distinct hyperparameter configs (varying learning rate and clip range) converge to profitable test returns with Sharpe ratios within ±20% of the cohort mean.
 
-- **SC-006**: Model Reproducibility: Trained agent loaded from disk produces identical trading signals (±0 difference) when run on same test data with identical random seed
+- **SC-006 (Gate)**: Model Reproducibility — loading a saved policy with identical random seeds reproduces actions and NAV series exactly (tolerance 1e-9).
 
-- **SC-007**: Training Stability: TensorBoard logs show smooth reward curves (moving average <±20% oscillation) without collapse to always-hold policy
+- **SC-007 (Target)**: Training Stability — TensorBoard reward curves (100-episode moving average) fluctuate within ±20% once convergence starts; sharp collapses require triage.
 
-- **SC-008**: Backtest Execution: System completes full train-test pipeline (download data, train agent, backtest) for SPY in ≤30 minutes on standard hardware
+- **SC-008 (Target)**: Backtest Execution — full train → backtest pipeline completes within 30 minutes on an 8-core CPU and a single mid-range GPU (e.g., RTX 3060). A trimmed “smoke” config must finish under 5 minutes for CI.
 
-- **SC-009**: Hyperparameter Sensitivity: Varying learning rate by 10× (e.g., 1e-4 ↔ 1e-3) changes final Sharpe ratio by ±15% but agent remains profitable
+- **SC-009 (Signal)**: Hyperparameter Sensitivity — scaling PPO learning rate by 10× shifts Sharpe ratio by ≤20% while remaining profitable; deviations inform future tuning tasks.
 
-- **SC-010**: Documentation: Complete end-to-end example (Jupyter notebook) demonstrates SPY trading system setup, training, and backtesting for a researcher with basic Python knowledge
+- **SC-010 (Gate)**: Documentation — a runnable example notebook and README section walk through data prep, training, and backtesting using the CLI commands listed below.
+
+## Metric Definitions
+
+- **Cumulative return**: `(NAV_T / NAV_0) - 1`, computed from the backtest NAV series.
+- **Log return**: `ln(NAV_t / NAV_{t-1})`; rewards assume NAV stays positive.
+- **Sharpe ratio**: `(μ_d - r_f) / σ_d * √252` where `μ_d` and `σ_d` are mean and standard deviation of daily log returns, and `r_f` defaults to 0 for both agent and baseline.
+- **Max drawdown**: `max_t (1 - NAV_t / peak_t)` with `peak_t` as the running NAV maximum.
+- **Win rate**: Percentage of trading days with positive log return while the agent holds a position.
+- **Transaction cost attribution**: `cost_bps * price` expressed as NAV delta; stored separately to reconcile PnL.
 
 ## Assumptions
 
@@ -171,7 +197,8 @@ baseline profitability.
 - Historical SPY data reflects real market conditions without structural breaks; 2020-2025 period chosen to include COVID crisis and post-pandemic recovery
 - PPO algorithm (Proximal Policy Optimization) is suitable for discrete action trading tasks; default hyperparameters from Stable-Baselines3 provide reasonable starting point
 - PPO requires ≥1 year (252+ trading days) of training data to learn meaningful patterns; 5 years (2020-2024) provides ample training signal
-- Technical indicators (SMA, RSI, MACD) standardized in `config.py` INDICATORS list are sufficient for agent observation
+- Technical indicators (SMA, RSI, MACD) standardized in `config.py` `INDICATORS` list are sufficient for agent observation and will be z-scored using statistics learned on the training split only.
+- Yahoo Finance adjusted close prices (split/dividend adjusted) serve as the canonical data source; gaps larger than one trading day trigger data quality warnings and manual inspection.
 
 ## Constraints
 
@@ -188,3 +215,27 @@ baseline profitability.
 - Multi-asset portfolio optimization (SPY only for v1.0; multi-asset strategies deferred)
 - Factor/sentiment analysis (pure price-based technical indicators for v1.0)
 - Portfolio rebalancing (single-asset strategy)
+
+## Reproducibility & Artifacts
+
+- **Seed management**: CLI accepts a `--seed` argument that drives `random`, `numpy`, `torch`, and SB3 seeds. GPU runs set `torch.backends.cudnn.deterministic = True` and disable benchmark mode when deterministic behavior is requested.
+- **Model storage**: Trained policies, scaler parameters, and run metadata are written to `trained_models/<run_name>/` (default `trained_models/ppo_spy_daily`).
+- **Data cache**: Raw CSV/Parquet downloads live under `datasets/`; processed arrays are versioned by timestamp to avoid collisions across experiments.
+- **Logging**: TensorBoard logs go to `tensorboard_log/<run_name>/`. Backtests write NAV series, metrics CSV, and plots under `results/<run_name>/`.
+- **Dependency pinning**: `pyproject.toml` pins versions for Stable-Baselines3, Gymnasium, pandas, and numpy. Spec changes that require upgrades must be documented with migration notes.
+
+## Testing Strategy
+
+- `unit_tests/environments/test_spy_env.py`: Validates discrete action transitions, rejects shorting, checks reward math with transaction costs, and ensures no lookahead on a synthetic price series.
+- `unit_tests/environments/test_indicator_windows.py`: Confirms rolling indicator calculations only use historical data and keep index alignment with the price frame.
+- `unit_tests/agents/test_ppo_reproducibility.py`: Trains a tiny PPO agent for a few epochs on synthetic data, saves, reloads, and asserts identical action sequences given the same seed.
+- `unit_tests/backtest/test_metrics.py`: Regression tests for Sharpe ratio, max drawdown, win rate, and cumulative return computations.
+- CI smoke run: `poetry run pytest -k spy_env` plus a short training script (`--timesteps 1024`) to ensure end-to-end wiring stays under 5 minutes.
+
+## CLI & Path Mapping
+
+- **Direct training**: `poetry run python - <<'PY'` invoking `finrl/train.py:1` with `ticker_list=['SPY']`, `drl_lib='stable_baselines3'`, `model_name='ppo'`, and `cwd='trained_models/ppo_spy_daily'` trains the agent using `finrl/meta/env_stock_trading/env_stocktrading_np.py:1`.
+- **Direct backtest**: `poetry run python - <<'PY'` calling `finrl/test.py:1` loads the saved policy and evaluates on 2025 data via `finrl/meta/env_stock_trading/env_stocktrading.py:1`.
+- **Launcher wrapper**: `poetry run python finrl/main.py --mode=train|test` seeds directories declared in `finrl/config.py:1`. For SPY runs, either introduce `finrl/applications/spy_cli.py` to forward CLI flags or temporarily override the ticker list before execution.
+- **Artifacts**: Generated assets respect the directories from `finrl/config.py` (`datasets/`, `trained_models/`, `tensorboard_log/`, `results/`). Success criteria reference these locations for verification.
+- **Documentation**: `examples/spy_ppo_daily.ipynb` (to be created) mirrors the CLI commands and includes equity curve, drawdown, and Sharpe visualizations.
