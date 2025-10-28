@@ -87,30 +87,23 @@ class SPYDataProcessor(YahooFinanceProcessor):
 
         # Reset index and rename columns to FinRL standard
         data_df = data_df.reset_index()
-        try:
-            data_df.columns = [
-                "date",
-                "open",
-                "high",
-                "low",
-                "close",
-                "adjcp",
-                "volume",
-                "tic",
-            ]
-        except ValueError:
-            # For daily data, 'Adj Close' may be named differently
-            data_df = data_df.rename(
-                columns={
-                    "Date": "date",
-                    "Open": "open",
-                    "High": "high",
-                    "Low": "low",
-                    "Close": "close",
-                    "Adj Close": "adjcp",
-                    "Volume": "volume",
-                }
-            )
+
+        # Handle both single-level and multi-level column names from yfinance
+        if isinstance(data_df.columns, pd.MultiIndex):
+            data_df.columns = data_df.columns.get_level_values(0)
+
+        # Standardize column names to lowercase
+        data_df = data_df.rename(
+            columns={
+                "Date": "date",
+                "Open": "open",
+                "High": "high",
+                "Low": "low",
+                "Close": "close",
+                "Adj Close": "adjcp",
+                "Volume": "volume",
+            }
+        )
 
         # Convert date to datetime
         data_df["date"] = pd.to_datetime(data_df["date"])
@@ -149,16 +142,16 @@ class SPYDataProcessor(YahooFinanceProcessor):
         # Step 1: Remove NaN rows
         df = df.dropna(subset=["close", "open", "high", "low", "volume"])
 
-        # Step 2: Check completeness (99% threshold)
+        # Step 2: Check completeness (95% threshold accounting for market holidays)
         dates = pd.to_datetime(df["date"])
         bdays = pd.bdate_range(dates.min(), dates.max())
         completeness = len(dates.unique()) / len(bdays)
 
-        if completeness < 0.99:
+        if completeness < 0.95:
             raise ValueError(
                 f"Data completeness too low: {completeness:.2%} "
                 f"({len(dates.unique())}/{len(bdays)} days). "
-                f"Expected ≥99% (≤{int(0.01 * len(bdays))} missing days)."
+                f"Expected ≥95% (≤{int(0.05 * len(bdays))} missing days)."
             )
 
         # Step 3: Flag outliers (>5σ daily returns)
@@ -260,11 +253,17 @@ class SPYDataProcessor(YahooFinanceProcessor):
         # Download VIX data
         vix_df = yf.download("^VIX", start=start_date, end=end_date)
         vix_df = vix_df.reset_index()
-        vix_df.columns = ["date"] + list(vix_df.columns[1:])
+
+        # Handle both single-level and multi-level column names from yfinance
+        if isinstance(vix_df.columns, pd.MultiIndex):
+            vix_df.columns = vix_df.columns.get_level_values(0)
+
+        # Standardize column names
+        vix_df = vix_df.rename(columns={"Date": "date", "Close": "close"})
         vix_df["date"] = pd.to_datetime(vix_df["date"])
 
         # Keep only date and close (VIX value)
-        vix_df = vix_df[["date", "Close"]].rename(columns={"Close": "vix"})
+        vix_df = vix_df[["date", "close"]].rename(columns={"close": "vix"})
 
         # Merge with main dataframe
         df = df.merge(vix_df, on="date", how="left")

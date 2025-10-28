@@ -75,7 +75,7 @@ SPY_INDICATORS = [
     "dx_30",
     "close_30_sma",
     "close_60_sma",
-    "vix",  # Volatility Index for market regime detection
+    # Note: VIX is added separately via add_vix() method, not as a technical indicator
 ]
 
 SPY_CONFIG = {
