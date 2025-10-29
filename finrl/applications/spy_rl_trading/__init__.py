@@ -7,8 +7,10 @@ Components:
     - data_processor: SPY-specific data processing (Yahoo Finance integration)
     - environment: Discrete action trading environment (BUY/HOLD/SELL)
     - agent: PPO agent wrapper with TensorBoard integration
-    - pipeline: End-to-end training and backtesting orchestration
+    - pipeline: End-to-end training orchestration
+    - backtest: Comprehensive backtesting engine with performance metrics
     - metrics: Performance analytics (Sharpe ratio, max drawdown, win rate)
+    - report: Visualization and reporting tools
 
 Architecture:
     Extends FinRL three-layer architecture:
@@ -16,7 +18,7 @@ Architecture:
     - Agents Layer: Wraps Stable-Baselines3 PPO implementation
     - Applications Layer: SPY trading-specific logic (this module)
 
-Example:
+Example (Training):
     >>> from finrl.applications.spy_rl_trading import pipeline
     >>> from finrl.config import SPY_CONFIG, PPO_PARAMS
     >>>
@@ -26,10 +28,22 @@ Example:
     ...     symbol="SPY",
     ...     total_timesteps=100_000
     ... )
+
+Example (Backtesting):
+    >>> from finrl.applications.spy_rl_trading.backtest import backtest_agent
+    >>> from finrl.applications.spy_rl_trading.report import BacktestReporter
     >>>
-    >>> # Backtest on hold-out data
-    >>> results = pipeline.backtest_agent(trained_model, test_data)
-    >>> print(f"Sharpe Ratio: {results['sharpe_ratio']:.3f}")
+    >>> # Run backtest
+    >>> result = backtest_agent(
+    ...     model_path="trained_models/spy_ppo",
+    ...     test_env=test_env,
+    ...     price_history=spy_prices,
+    ...     output_dir="results/backtest"
+    ... )
+    >>>
+    >>> # Generate report
+    >>> reporter = BacktestReporter(result)
+    >>> reporter.generate_html_report("reports/backtest.html")
 """
 
 __version__ = "1.0.0"
@@ -41,4 +55,7 @@ __all__ = [
     "pipeline",
     "metrics",
     "backtest",
+    "report",
+    "hyperparam_sweep",
+    "hyperparam_analysis",
 ]
