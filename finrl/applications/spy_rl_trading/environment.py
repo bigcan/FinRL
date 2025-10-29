@@ -293,8 +293,9 @@ class SPYTradingEnv(gym.Env):
                 # CCI can be large, clip to [-200, 200]
                 indicators.append(np.clip(value, -200, 200) / 200.0)
             else:
-                # Other indicators: use price-relative normalization
-                indicators.append(value / price if price > 0 else 0.0)
+                # Other indicators: use price-relative normalization with epsilon
+                epsilon = 1e-10
+                indicators.append(value / (price + epsilon))
 
         # Turbulence index (if exists)
         if "turbulence" in self.df.columns:
@@ -308,6 +309,9 @@ class SPYTradingEnv(gym.Env):
             [balance_norm, shares, price_norm] + indicators + [turbulence_norm],
             dtype=np.float32,
         )
+
+        # Replace NaN/Inf with 0 for robustness
+        state = np.nan_to_num(state, nan=0.0, posinf=1.0, neginf=-1.0)
 
         return state
 
