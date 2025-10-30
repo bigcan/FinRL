@@ -411,6 +411,398 @@ Examples from task list:
 
 ---
 
-**Phase 1 Status**: ✅ Tasks generated. Ready for development.
+**Phase 1-6 Status**: ✅ Complete (37/39 tasks, 95%). Production-ready implementation.
 
-**Next**: Use task list to begin Phase 1 setup. Commit tasks.md to feature branch.
+**Phase 7-12 Status**: 🆕 NEW - Production hardening (0/40 tasks, 0%). Planning phase.
+
+---
+
+## ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## PHASE 2: PRODUCTION HARDENING
+
+**Status**: 🆕 Planning
+**Scope**: Phases 7-12 (Production readiness)
+**Duration**: 6 weeks (242 hours estimated)
+**Dependencies**: Phases 1-6 complete ✅
+
+---
+
+## Phase 7: Dependency Management (Week 1)
+
+**Purpose**: Deterministic, reproducible builds with locked dependencies
+**Duration**: 1 week
+**Blocker**: Foundation for all hardening work
+
+- [ ] T040 [P] Remove setuptools artifacts: Delete `setup.py`, `setup.cfg`, `requirements.txt` to standardize on Poetry
+  - Remove pip install -e . references in all documentation
+  - Update GUIDE.md with Poetry-only installation instructions
+  - Verify: `poetry check` passes
+
+- [ ] T041 [P] Clean pyproject.toml:
+  - Review existing `finrl/pyproject.toml` for duplicate dependencies
+  - Consolidate dev/test/docs dependency groups
+  - Add comments explaining pinning decisions
+  - Verify: `poetry check` passes without warnings
+
+- [ ] T042 Pin Python version in `finrl/pyproject.toml`:
+  - Set: `python = "^3.10,<3.13"` for SB3/Ray compatibility
+  - Test on Python 3.10, 3.11, 3.12 locally
+  - Update README.md with Python version requirement
+  - Dependency: T041
+
+- [ ] T043 Resolve dependency conflicts:
+  - Issue a) Remove alpaca-trade-api, migrate to alpaca-py (actively maintained)
+  - Issue b) Pin stable-baselines3 to stable 2.x release (remove pre-release pins)
+  - Issue c) Pin ray[rllib] to 2.9.x (latest stable, Python 3.10-3.12 compatible)
+  - Update `finrl/meta/data_processors/processor_alpaca.py` imports if needed
+  - Verify: PPO agent training still works
+  - Run full test suite to validate compatibility
+  - Dependency: T042
+  - Risk: Medium (may require code changes in agent wrappers)
+
+- [ ] T044 Generate poetry.lock with version ranges:
+  - Run: `poetry lock --no-update`
+  - Strategy: Exact pins for ML libs (torch, sb3, ray), ^ for others (numpy, pandas)
+  - Example: `numpy = "^1.24.0"` (allow 1.24.x, 1.25.x), `torch = "2.1.0"` (exact)
+  - Commit poetry.lock to git
+  - Document lock regeneration policy in README
+  - Dependency: T043
+
+- [ ] T045 Verify reproducible builds:
+  - Test matrix: Python 3.10/3.11/3.12 on Linux, macOS (Windows optional)
+  - Create fresh venv, run `poetry install`, verify identical environment
+  - Run test suite on each platform
+  - Document any platform-specific issues
+  - Dependency: T044
+
+**Checkpoint Phase 7**: Deterministic builds achieved. poetry.lock committed. All dependencies pinned with appropriate ranges.
+
+---
+
+## Phase 8: CI/CD Pipeline (Week 1-2)
+
+**Purpose**: Automated testing, quality gates, security scanning, releases
+**Duration**: 1-2 weeks
+**Blocker**: CI must pass before merging to main
+
+- [ ] T046 [P] Create GitHub Actions CI workflow in `.github/workflows/ci.yml`:
+  - Test matrix: Python [3.10, 3.11, 3.12] × OS [ubuntu-latest, macos-latest]
+  - Lint job: black --check, isort --check, flake8, mypy (type checking)
+  - Test job: pytest unit_tests/applications/spy_rl_trading/ -v --cov
+  - Trigger: on push and pull_request
+  - Dependency: T045
+
+- [ ] T047 Add coverage reporting with codecov.io:
+  - Integrate codecov.io or coveralls
+  - Create `.coveragerc`: source=finrl/applications/spy_rl_trading, fail_under=80
+  - Upload coverage XML to codecov after test job
+  - Add coverage badge to README.md
+  - Fail PR if coverage drops >2%
+  - Dependency: T046
+
+- [ ] T048 Create deterministic test fixtures:
+  - Script: `scripts/generate_test_fixtures.py`
+  - Download SPY data for 2020-2023, add indicators, add VIX
+  - Save: `unit_tests/fixtures/spy_data_2020_2023.parquet` (~5MB)
+  - Update all tests to use `@pytest.fixture` loading fixture
+  - Remove network calls from unit tests
+  - Regeneration schedule: Quarterly or when indicators change
+  - Dependency: T046
+
+- [ ] T049 [P] Add security scanning:
+  - pip-audit: `poetry export -f requirements.txt | pip-audit` (dependency vulnerabilities)
+  - CodeQL: GitHub security scanning for Python (static analysis)
+  - Bandit: `bandit -r finrl/applications/spy_rl_trading` (security linter, severity medium+)
+  - Add security job to `.github/workflows/ci.yml`
+  - Fail on high/critical vulnerabilities
+  - Weekly cron schedule
+  - Dependency: T046
+
+- [ ] T050 [P] Add license checking and SBOM generation:
+  - License checker: Allowed MIT, Apache-2.0, BSD-3-Clause; Block GPL, AGPL
+  - CycloneDX SBOM: `cyclonedx-py -r requirements.txt -o sbom.json`
+  - Attach SBOM to GitHub releases as artifact
+  - Dependency: T046
+
+- [ ] T051 Create release workflow in `.github/workflows/release.yml`:
+  - Trigger: Tag push matching `v*.*.*` (semantic versioning)
+  - Steps: Run tests → Build with `poetry build` → Generate SBOM → Extract changelog → Create GitHub release
+  - Optional: Publish to PyPI with `poetry publish` (if public package)
+  - Dependency: T050
+
+- [ ] T052 Add integration test workflow:
+  - Separate job: Runs after unit tests pass
+  - Use test fixtures (no network calls)
+  - Run only on main branch (skip PRs for speed)
+  - Command: `pytest -m integration`
+  - Dependency: T048
+
+**Checkpoint Phase 8**: CI/CD pipeline operational. All tests automated. Security scans active. Release process defined.
+
+---
+
+## Phase 9: Test Hardening (Week 2-3)
+
+**Purpose**: Robust, isolated tests with proper separation
+**Duration**: 1-2 weeks
+**Blocker**: Clean test suite required before production
+
+- [ ] T053 [P] Audit and fix brittle tests:
+  - Review: `unit_tests/applications/spy_rl_trading/test_data_processor.py`
+  - Replace exact row count assertions with tolerance ranges
+  - Example BAD: `assert len(df) == 1008`
+  - Example GOOD: `assert 1000 <= len(df) <= 1100, f"Expected ~1008 rows, got {len(df)}"`
+  - Use property-based checks: `trading_days = len(pd.bdate_range(start, end)); assert abs(len(df) - trading_days) < 10`
+  - Dependency: T048
+
+- [ ] T054 Reorganize test structure (unit vs integration):
+  - Create: `unit_tests/applications/spy_rl_trading/unit/` (fast, offline, mocked)
+  - Create: `unit_tests/applications/spy_rl_trading/integration/` (slow, network, end-to-end)
+  - Move tests appropriately
+  - Update imports and test discovery
+  - Dependency: T053
+
+- [ ] T055 Configure pytest markers in `pytest.ini`:
+  - Add markers: `unit` (fast offline), `integration` (slow), `network` (requires network)
+  - Mark all tests appropriately with `@pytest.mark.unit` etc.
+  - CI strategy: Always run unit, run integration only on main
+  - Local: `pytest -m "not network"` to skip network tests
+  - Dependency: T054
+
+- [ ] T056 [OPTIONAL] Add property-based testing with Hypothesis:
+  - Install: `hypothesis` package
+  - Data processor invariants: clean_data() never introduces NaN, OHLC ordering preserved
+  - Environment invariants: Portfolio value never negative, cash + holdings = total value
+  - Example: `@given(st.floats(min_value=0.01, max_value=1000)) def test_portfolio_invariant(initial_amount): ...`
+  - Effort: 12 hours (high value but optional)
+  - Dependency: T055
+
+- [ ] T057 Fix flaky tests:
+  - Identify: Tests that fail intermittently in CI
+  - Fix: Add explicit seeds, remove time.sleep(), ensure proper cleanup
+  - Quarantine: Mark with `@pytest.mark.flaky(reruns=3)` if unavoidable
+  - Common issues: Random seeds not set, race conditions, filesystem cleanup incomplete
+  - Dependency: T055
+
+- [ ] T058 Update test documentation in GUIDE.md:
+  - Document test pyramid: unit (base), integration (middle), E2E (top)
+  - Document running tests: `pytest -m unit`, `pytest -m integration`
+  - Explain markers and when to use each
+  - Dependency: T057
+
+**Checkpoint Phase 9**: Test suite reorganized. Unit/integration separated. All tests reliable and fast.
+
+---
+
+## Phase 10: Runtime & Operations (Week 3-4)
+
+**Purpose**: Production observability with structured logging and configuration
+**Duration**: 1-2 weeks
+**Blocker**: Required for production deployment
+
+- [ ] T059 Implement structured logging with structlog:
+  - Create: `finrl/applications/spy_rl_trading/logging_config.py`
+  - Use structlog for JSON logging in production, console in dev
+  - Processors: add_log_level, TimeStamper(iso), StackInfoRenderer, format_exc_info
+  - Update all modules to use: `import structlog; logger = structlog.get_logger(__name__)`
+  - Log training start: `logger.info("training_started", timesteps=total, model="ppo", symbol="SPY")`
+  - Log episode complete: `logger.info("episode_complete", episode=N, return=X, sharpe=Y)`
+
+- [ ] T060 Add metrics logging to training and backtesting:
+  - Training metrics: episode_num, episode_return, mean_100ep_return, sharpe_ratio, loss, learning_rate
+  - Backtesting metrics: total_return, sharpe_ratio, max_drawdown, win_rate, action_distribution
+  - System metrics: data_load_time, training_time, backtest_time, memory_usage
+  - Dependency: T059
+
+- [ ] T061 Create centralized configuration with pydantic-settings:
+  - Create: `finrl/applications/spy_rl_trading/settings.py`
+  - Class: `SPYTradingSettings(BaseSettings)` with all config (data, capital, training, paths, indicators)
+  - Environment variable support: `SPY_*` prefix, `.env` file support
+  - Example: `SPY_INITIAL_AMOUNT=200000 python train.py`
+  - Create: `.env.example` template
+  - Validation: Range checks for hyperparameters
+
+- [ ] T062 Remove all hardcoded paths:
+  - Pattern: Replace `"./trained_models/spy_ppo"` with `settings.model_dir / "spy_ppo"`
+  - Files to update: pipeline.py, agent.py, backtest.py, all example scripts
+  - Use pathlib.Path for all path operations
+  - Dependency: T061
+
+- [ ] T063 Add reproducibility hooks:
+  - Create: `finrl/applications/spy_rl_trading/reproducibility.py`
+  - Function: `set_global_seed(seed: int)` sets random, numpy, torch, torch.cuda seeds
+  - Enable deterministic torch: `torch.backends.cudnn.deterministic = True, benchmark = False`
+  - Log seed for reproducibility: `logger.info("global_seed_set", seed=seed)`
+  - Usage: Call at start of all training/backtesting scripts
+
+- [ ] T064 Update GUIDE.md for operations:
+  - Document configuration system with pydantic-settings
+  - List all environment variables (SPY_*)
+  - Document structured logging format and usage
+  - Explain seed management for reproducibility
+  - Dependency: T061, T063
+
+**Checkpoint Phase 10**: Production observability complete. Structured logging operational. All configuration centralized and environment-driven.
+
+---
+
+## Phase 11: Docker & Containerization (Week 4)
+
+**Purpose**: Containerized deployment with multi-stage builds
+**Duration**: 1 week
+**Blocker**: Optional but recommended for deployment
+
+- [ ] T065 Create production Dockerfile in `docker/Dockerfile`:
+  - Multi-stage build: builder (export requirements) → runtime (minimal image)
+  - Base: `python:3.10-slim`
+  - Non-root user: `useradd -m -u 1000 finrl`
+  - Volumes: /data, /models, /results
+  - Environment: PYTHONPATH, SPY_DATA_DIR, SPY_MODEL_DIR, SPY_RESULTS_DIR
+  - Default CMD: `python -m finrl.applications.spy_rl_trading.example_training`
+  - Dependency: T044, T061
+
+- [ ] T066 Create Jupyter development image in `docker/Dockerfile.dev`:
+  - Extend FROM finrl-runtime:latest
+  - Install: jupyter, jupyterlab, ipywidgets, matplotlib, seaborn
+  - Expose port 8888
+  - CMD: `jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root`
+  - Dependency: T065
+
+- [ ] T067 Create docker-compose.yml for orchestration:
+  - Services: training, backtesting, jupyter
+  - Volumes: ./data:/data, ./trained_models:/models, ./results:/results
+  - Environment: Configure via .env file
+  - Dependency: T066
+
+- [ ] T068 Add multi-architecture builds in `.github/workflows/docker.yml`:
+  - Platforms: linux/amd64, linux/arm64 (Apple Silicon support)
+  - Build on tag push: `v*.*.*`
+  - Push to GitHub Container Registry (ghcr.io)
+  - Tags: version tag + latest
+  - Dependency: T067
+
+- [ ] T069 Update GUIDE.md for Docker:
+  - Add Docker section with build/run instructions
+  - Document docker-compose usage
+  - Include troubleshooting for common Docker issues
+  - Dependency: T067
+
+**Checkpoint Phase 11**: Docker images build successfully. docker-compose orchestration working. Multi-arch builds automated.
+
+---
+
+## Phase 12: Finance-Specific Hardening (Week 5-6)
+
+**Purpose**: Production trading infrastructure with realistic costs and risk limits
+**Duration**: 2 weeks
+**Blocker**: Required for live trading deployment
+
+- [ ] T070 [P] Implement realistic transaction cost model:
+  - Create: `finrl/applications/spy_rl_trading/transaction_costs.py`
+  - Class: `TransactionCostModel` with commission, spread, market impact, SEC fees
+  - Method: `calculate_cost(trade_value, side)` returns total cost
+  - Integrate in environment: `_calculate_transaction_cost(action, price)`
+  - Default SPY costs: commission=$0, spread=1bp, impact=2bp, SEC=2.78bp (sell only)
+
+- [ ] T071 [P] Add slippage model:
+  - Class: `SlippageModel` with base slippage + volume impact
+  - Method: `apply_slippage(price, order_size, daily_volume, side)` returns execution price
+  - Volume impact: Larger orders get worse prices proportionally
+  - Direction: Buy pays up, sell gets worse prices
+  - Dependency: T070
+
+- [ ] T072 Add market calendar integration:
+  - Install: `pandas_market_calendars` package
+  - Class: `MarketCalendar` with NYSE calendar
+  - Method: `is_trading_day(date)` validates trading days
+  - Method: `get_market_hours(date)` returns open/close times
+  - Use in data processor: Filter non-trading days
+
+- [ ] T073 Implement position and risk limits:
+  - Create: `finrl/applications/spy_rl_trading/risk_limits.py`
+  - Class: `RiskLimits` with max_position_pct, max_drawdown_pct, max_daily_loss_pct, max_trades_per_day
+  - Method: `check_position_limit(position_value, portfolio_value)` returns bool
+  - Method: `check_drawdown_limit(current_value, peak_value)` returns bool
+  - Integrate in environment: Check limits before executing trades
+  - Default limits: 100% position, 20% max drawdown, 5% daily loss, 10 trades/day
+
+- [ ] T074 Create broker adapter pattern:
+  - Create: `finrl/applications/spy_rl_trading/brokers/base.py`
+  - Abstract class: `BrokerAdapter` with methods: place_order, get_order_status, cancel_order, get_positions, get_account
+  - Create: `finrl/applications/spy_rl_trading/brokers/alpaca.py`
+  - Class: `AlpacaBroker(BrokerAdapter)` implementing Alpaca API integration
+  - Retry logic: Use tenacity for exponential backoff (3 attempts, 4-10s wait)
+  - Idempotency: Generate unique client_order_id for each order
+  - Dependency: T043 (alpaca-py migration)
+  - Risk: High (external API integration)
+
+- [ ] T075 Implement trading modes (backtest/paper/live):
+  - Create: `finrl/applications/spy_rl_trading/trading_engine.py`
+  - Enum: `TradingMode` = BACKTEST, PAPER, LIVE
+  - Class: `TradingEngine` with mode switching logic
+  - Safety checks for live trading: Require explicit confirmation, environment variable
+  - Execute methods: `_backtest_execution()`, `_paper_execution()`, `_live_execution()`
+  - Dependency: T074
+
+- [ ] T076 Add dry-run and simulation modes:
+  - Paper trading: Live data, simulated orders (no real execution)
+  - Dry-run: Test mode with safety checks disabled
+  - Validation: Verify paper trading executes correctly without real money
+  - Logging: Clear indicators of simulation vs live mode
+  - Dependency: T075
+
+- [ ] T077 [OPTIONAL] Add monitoring and alerting:
+  - Prometheus metrics: orders_placed, order_latency, portfolio_value, daily_pnl
+  - Grafana dashboards: Training metrics, backtest performance, live trading PnL
+  - Alert rules: Drawdown >15%, daily loss >5%, order failures >10%, API errors >5/min
+  - Effort: 16 hours (high value but optional)
+  - Dependency: T060
+
+- [ ] T078 Test paper trading end-to-end:
+  - Integration test: Load model → connect to Alpaca paper → place orders → verify execution
+  - Validate: Orders execute successfully, no real money used, metrics logged correctly
+  - Document in GUIDE.md: Paper trading setup and validation
+  - Dependency: T076
+
+- [ ] T079 Update finance documentation:
+  - Document transaction cost model with default SPY parameters
+  - Document risk limits and enforcement logic
+  - Create broker setup guide (Alpaca account, API keys)
+  - Create live trading checklist (safety checks, monitoring, rollout strategy)
+  - Dependency: T073, T076
+
+**Checkpoint Phase 12**: Production trading infrastructure complete. Realistic costs implemented. Risk limits enforced. Paper trading validated. System ready for live deployment.
+
+---
+
+## Summary Statistics - Updated
+
+### Phase 1-6 (Implementation) - COMPLETE ✅
+- **Tasks**: 39 total (37 complete, 2 deferred)
+- **Completion**: 95%
+- **Status**: Production-ready implementation
+- **Deferred**: T011, T012 (covered by integration tests)
+
+### Phase 7-12 (Hardening) - NEW 🆕
+- **Tasks**: 40 total (0 complete)
+- **Effort**: 242 hours estimated
+- **Timeline**: 6 weeks
+- **Status**: Planning phase
+
+### Overall Project
+- **Total Tasks**: 79 (39 + 40)
+- **Completed**: 37 (47%)
+- **Remaining**: 42 (53%)
+- **Phase Breakdown**:
+  - Phase 1-6: Implementation (COMPLETE)
+  - Phase 7: Dependency Management (6 tasks, 20h)
+  - Phase 8: CI/CD Pipeline (7 tasks, 44h)
+  - Phase 9: Test Hardening (6 tasks, 34h)
+  - Phase 10: Runtime & Operations (6 tasks, 40h)
+  - Phase 11: Docker & Containerization (5 tasks, 21h)
+  - Phase 12: Finance-Specific Hardening (10 tasks, 83h)
+
+---
+
+**Next Steps**: Begin Phase 7 (Dependency Management) after approval of hardening plan. Execute tasks in dependency order.

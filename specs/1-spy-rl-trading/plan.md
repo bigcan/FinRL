@@ -254,4 +254,388 @@ Phase 2 generates actionable task list in `tasks.md`:
 
 ---
 
-**Status**: ✅ **Phase 0-1 COMPLETE**. Ready for `/speckit.tasks` to generate Phase 2 implementation tasks.
+**Status**: ✅ **Phase 0-6 COMPLETE**. Production-ready implementation delivered.
+
+---
+
+## PHASE 2: PRODUCTION HARDENING (NEW)
+
+**Status**: 🆕 Planning
+**Duration**: 6 weeks
+**Timeline**: November-December 2025
+**Dependencies**: Phases 1-6 (COMPLETE ✅)
+
+### Overview
+
+Transform the production-ready SPY RL Trading System into an enterprise-grade platform with:
+- Deterministic builds and reproducible environments
+- Automated CI/CD with comprehensive quality gates
+- Production observability and configuration management
+- Containerized deployment infrastructure
+- Finance-specific controls (realistic costs, risk limits, live trading)
+
+### Goals
+
+**G7: Dependency Management**
+- Achieve deterministic, reproducible builds across environments
+- Pin all dependencies with appropriate version ranges
+- Resolve library conflicts and pre-release pins
+- Eliminate setuptools artifacts, standardize on Poetry
+
+**G8: CI/CD Pipeline**
+- Automated testing across Python 3.10, 3.11, 3.12
+- Comprehensive coverage reporting (≥80% threshold)
+- Security scanning (pip-audit, CodeQL, Bandit)
+- Automated releases with SBOM generation
+- Deterministic test fixtures for offline testing
+
+**G9: Observability & Operations**
+- Structured JSON logging for production environments
+- Centralized configuration with environment variable support
+- Reproducible results with global seed management
+- Remove all hardcoded paths and constants
+- Production-grade error handling and monitoring
+
+**G10: Containerization**
+- Multi-stage Docker images for training and deployment
+- Jupyter development environment for research
+- docker-compose orchestration for multi-service setup
+- Multi-architecture builds (amd64, arm64) via GitHub Actions
+
+**G11: Finance-Specific Controls**
+- Realistic transaction costs (commission, spread, market impact, SEC fees)
+- Volume-based slippage model
+- Market calendar integration for trading day validation
+- Position and risk limits (drawdown, daily loss, position size)
+
+**G12: Live Trading Infrastructure**
+- Broker adapter pattern with Alpaca implementation
+- Trading mode switching (backtest, paper, live)
+- Dry-run and simulation capabilities
+- Paper trading validation and safety checks
+- Monitoring and alerting (optional)
+
+---
+
+## Phase 7: Dependency Management (Week 1)
+
+**Goal**: Deterministic, reproducible builds with locked dependencies
+
+**Duration**: 1 week (20 hours)
+**Tasks**: T040-T045 (6 tasks)
+
+**Key Activities**:
+1. Remove setuptools artifacts (setup.py, requirements.txt)
+2. Clean and consolidate pyproject.toml
+3. Pin Python version to ^3.10,<3.13
+4. Resolve dependency conflicts:
+   - Remove alpaca-trade-api, migrate to alpaca-py
+   - Pin stable-baselines3 to stable 2.x
+   - Pin ray[rllib] to 2.9.x
+5. Generate poetry.lock with appropriate version ranges
+6. Verify reproducible builds across Python 3.10/3.11/3.12
+
+**Success Criteria**: SC-H001
+- All dependencies pinned in poetry.lock
+- Zero high/critical security vulnerabilities
+- Builds reproducible across Linux, macOS, Windows
+
+**Deliverables**:
+- Clean pyproject.toml (Poetry only)
+- poetry.lock with pinned versions
+- Updated installation documentation
+- Dependency management policy documented
+
+**Risks**:
+- Medium: Library conflicts may require code changes in agent wrappers
+- Mitigation: Extensive CI testing on multiple Python versions
+
+---
+
+## Phase 8: CI/CD Pipeline (Week 1-2)
+
+**Goal**: Automated testing, quality gates, security scanning, releases
+
+**Duration**: 1-2 weeks (44 hours)
+**Tasks**: T046-T052 (7 tasks)
+
+**Key Activities**:
+1. GitHub Actions workflow with Python version matrix
+2. Coverage reporting with codecov.io (≥80% threshold)
+3. Deterministic test fixtures (spy_data_2020_2023.parquet)
+4. Security scanning:
+   - pip-audit for dependency vulnerabilities
+   - CodeQL for static analysis
+   - Bandit for security linting
+5. License checking and SBOM generation
+6. Automated release workflow (tag → build → publish)
+7. Separate integration test workflow
+
+**Success Criteria**: SC-H002
+- Tests passing on Python 3.10, 3.11, 3.12
+- Coverage maintained ≥80%
+- Automated releases functional
+- Security scans clean
+
+**Deliverables**:
+- .github/workflows/ci.yml (test matrix)
+- .github/workflows/release.yml (automated releases)
+- .github/workflows/docker.yml (container builds)
+- .coveragerc (coverage configuration)
+- unit_tests/fixtures/ (test data snapshots)
+- scripts/generate_test_fixtures.py
+
+**Risks**:
+- Low: Test fixtures may become stale
+- Mitigation: Quarterly regeneration schedule
+
+---
+
+## Phase 9: Test Hardening (Week 2-3)
+
+**Goal**: Robust, isolated test suite with proper separation
+
+**Duration**: 1-2 weeks (34 hours)
+**Tasks**: T053-T058 (6 tasks)
+
+**Key Activities**:
+1. Audit and fix brittle tests (remove exact row counts)
+2. Reorganize test structure:
+   - unit_tests/.../unit/ (fast, offline)
+   - unit_tests/.../integration/ (slow, end-to-end)
+3. Configure pytest markers (unit, integration, network)
+4. Property-based testing with Hypothesis (optional)
+5. Fix flaky tests (add seeds, remove race conditions)
+6. Update GUIDE.md test documentation
+
+**Success Criteria**: SC-H002 (maintained)
+- All tests reliable and fast
+- Unit/integration properly separated
+- No flaky tests in CI
+
+**Deliverables**:
+- Reorganized test directory structure
+- pytest.ini with markers
+- Fixed brittle assertions
+- Property-based tests (optional)
+- Updated test documentation
+
+**Risks**:
+- Low: Test reorganization may break imports
+- Mitigation: Incremental migration with validation
+
+---
+
+## Phase 10: Runtime & Operations (Week 3-4)
+
+**Goal**: Production observability with structured logging and configuration
+
+**Duration**: 1-2 weeks (40 hours)
+**Tasks**: T059-T064 (6 tasks)
+
+**Key Activities**:
+1. Structured logging with structlog:
+   - JSON format for production
+   - Console format for development
+   - Training, backtesting, system metrics
+2. Centralized configuration with pydantic-settings:
+   - SPYTradingSettings class
+   - Environment variable support (SPY_*)
+   - .env file support
+3. Remove all hardcoded paths (use settings)
+4. Reproducibility hooks:
+   - set_global_seed() function
+   - Deterministic torch configuration
+5. Update GUIDE.md for operations
+
+**Success Criteria**: SC-H003
+- Structured JSON logging operational
+- All settings configurable via environment
+- Seeds enable reproducibility
+
+**Deliverables**:
+- logging_config.py (structlog configuration)
+- settings.py (pydantic-settings)
+- reproducibility.py (seed management)
+- .env.example (environment template)
+- Updated GUIDE.md (operations section)
+
+**Risks**:
+- Low: Configuration migration may miss edge cases
+- Mitigation: Comprehensive code review
+
+---
+
+## Phase 11: Docker & Containerization (Week 4)
+
+**Goal**: Containerized deployment with multi-stage builds
+
+**Duration**: 1 week (21 hours)
+**Tasks**: T065-T069 (5 tasks)
+
+**Key Activities**:
+1. Multi-stage Dockerfile (builder → runtime)
+2. Jupyter development image
+3. docker-compose.yml for orchestration:
+   - Services: training, backtesting, jupyter
+   - Volumes: data, models, results
+4. Multi-architecture builds (amd64, arm64)
+5. Update GUIDE.md for Docker usage
+
+**Success Criteria**: SC-H004
+- Docker images build successfully
+- Multi-arch support (amd64, arm64)
+- docker-compose working
+
+**Deliverables**:
+- docker/Dockerfile (production runtime)
+- docker/Dockerfile.dev (Jupyter development)
+- docker-compose.yml (orchestration)
+- .dockerignore
+- .github/workflows/docker.yml
+- Updated GUIDE.md (Docker section)
+
+**Risks**:
+- Low: Docker build failures on ARM64
+- Mitigation: Multi-stage builds with error handling
+
+---
+
+## Phase 12: Finance-Specific Hardening (Week 5-6)
+
+**Goal**: Production trading infrastructure with realistic costs and risk limits
+
+**Duration**: 2 weeks (83 hours)
+**Tasks**: T070-T079 (10 tasks)
+
+**Key Activities**:
+1. Transaction cost model:
+   - Commission, spread, market impact, SEC fees
+   - Default SPY parameters (1bp spread, 2bp impact)
+2. Slippage model with volume impact
+3. Market calendar integration (NYSE trading days)
+4. Position and risk limits:
+   - Max drawdown (20% default)
+   - Daily loss limit (5% default)
+   - Position size limits
+5. Broker adapter pattern:
+   - Abstract BrokerAdapter base class
+   - AlpacaBroker implementation
+   - Retry logic with exponential backoff
+6. Trading modes (backtest, paper, live)
+7. Dry-run and simulation capabilities
+8. Monitoring and alerting (optional)
+9. Paper trading validation
+10. Finance documentation updates
+
+**Success Criteria**: SC-H005, SC-H006
+- Transaction costs realistic (<1% impact)
+- Risk limits prevent >20% drawdown
+- Paper trading functional
+- Broker adapter implemented
+- Monitoring operational (optional)
+
+**Deliverables**:
+- transaction_costs.py (cost model)
+- risk_limits.py (position/risk controls)
+- brokers/base.py (adapter interface)
+- brokers/alpaca.py (Alpaca implementation)
+- trading_engine.py (mode switching)
+- monitoring/ (Prometheus/Grafana, optional)
+- Updated GUIDE.md (finance section)
+
+**Risks**:
+- High: Broker API integration complexity
+- Mitigation: Adapter pattern with comprehensive testing
+
+---
+
+## Updated Timeline
+
+### Completed Work (Phases 1-6)
+**October 2025**: Implementation complete
+- 37/39 tasks (95%)
+- 2 tasks deferred (covered by integration tests)
+- Status: ✅ Production-ready
+
+### New Work (Phases 7-12)
+**November-December 2025**: Production hardening
+- Week 1: Phase 7 (Dependency Management)
+- Week 1-2: Phase 8 (CI/CD Pipeline)
+- Week 2-3: Phase 9 (Test Hardening)
+- Week 3-4: Phase 10 (Runtime & Operations)
+- Week 4: Phase 11 (Docker & Containerization)
+- Week 5-6: Phase 12 (Finance-Specific Hardening)
+
+**Total**: 40 tasks, 242 hours, 6 weeks
+
+---
+
+## Success Criteria (Phase 2)
+
+### SC-H001: Dependency Management
+- All dependencies pinned in poetry.lock
+- Zero high/critical security vulnerabilities
+- Build reproducible across environments
+
+### SC-H002: CI/CD
+- Tests passing on Python 3.10, 3.11, 3.12
+- Coverage maintained ≥80%
+- Automated releases functional
+
+### SC-H003: Observability
+- Structured JSON logging operational
+- All settings configurable via environment
+- Seeds enable reproducibility
+
+### SC-H004: Containerization
+- Docker images build successfully
+- Multi-arch support (amd64, arm64)
+- docker-compose working
+
+### SC-H005: Finance Controls
+- Transaction costs realistic (<1% impact)
+- Risk limits prevent >20% drawdown
+- Paper trading functional
+
+### SC-H006: Live Trading
+- Broker adapter implemented
+- Dry-run mode operational
+- Monitoring active (optional)
+
+---
+
+## Risk Management
+
+### High Priority Risks
+
+1. **Dependency conflicts break training**
+   - Impact: High
+   - Likelihood: Medium
+   - Mitigation: Extensive CI matrix testing on Python 3.10/3.11/3.12
+
+2. **Broker API changes**
+   - Impact: High
+   - Likelihood: Medium
+   - Mitigation: Adapter pattern with versioning, comprehensive error handling
+
+3. **Live trading losses**
+   - Impact: Critical
+   - Likelihood: Low
+   - Mitigation: Extensive paper trading validation, risk limits, safety checks
+
+### Medium Priority Risks
+
+1. **Test fixtures become stale**
+   - Impact: Medium
+   - Likelihood: High
+   - Mitigation: Quarterly regeneration schedule, automated validation
+
+2. **Docker build failures**
+   - Impact: Low
+   - Likelihood: Medium
+   - Mitigation: Multi-stage builds with error handling, multi-arch testing
+
+---
+
+**Status**: ✅ **Phases 1-6 COMPLETE**. 🆕 **Phases 7-12 PLANNED**. Ready to begin hardening implementation.

@@ -97,6 +97,28 @@ baseline profitability.
 - What happens if agent learns to always hold (policy collapse)? System should detect this and warn user.
 - How does system handle SPY corporate actions (splits, dividend dates)? Adjusted close prices handle this automatically.
 
+## Production Hardening Goals (Phase 2)
+
+### Goal 7: Dependency Management & Reproducibility
+- **G7**: Achieve deterministic builds across all environments through Poetry-based dependency management, lockfile enforcement, and comprehensive version pinning. Eliminate setuptools artifacts and pre-release dependency pins to ensure production stability.
+
+### Goal 8: CI/CD Pipeline & Quality Automation
+- **G8**: Implement comprehensive continuous integration with automated testing across Python 3.10-3.12, coverage reporting (≥80% threshold), security vulnerability scanning (pip-audit, CodeQL, Bandit), and automated release workflows with SBOM generation.
+
+### Goal 9: Test Hardening & Determinism
+- **G9**: Separate unit tests from integration tests using pytest markers, eliminate brittle test assertions (exact row counts), implement deterministic test fixtures with data snapshots, and add property-based testing with Hypothesis for robust edge case coverage.
+
+### Goal 10: Runtime Observability & Configuration
+- **G10**: Implement structured logging with structlog (JSON format), centralized configuration management via pydantic-settings with environment variable support, reproducibility hooks for global seed management, and comprehensive debug/info/warning log coverage.
+
+### Goal 11: Docker Containerization
+- **G11**: Create multi-stage Docker builds with non-root user execution, docker-compose orchestration for training/backtesting/paper-trading workflows, multi-architecture support (amd64, arm64), and optimized layer caching for faster builds.
+
+### Goal 12: Finance-Specific Production Controls
+- **G12**: Implement realistic transaction cost models (commission, spread, market impact, SEC fees), slippage modeling based on volume, NYSE trading calendar integration via pandas_market_calendars, risk limits (max drawdown, daily loss, position size), broker adapter abstraction for multiple brokers, and trading mode separation (backtest/paper/live).
+
+---
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -177,6 +199,22 @@ baseline profitability.
 - **SC-009 (Signal)**: Hyperparameter Sensitivity — scaling PPO learning rate by 10× shifts Sharpe ratio by ≤20% while remaining profitable; deviations inform future tuning tasks.
 
 - **SC-010 (Gate)**: Documentation — a runnable example notebook and README section walk through data prep, training, and backtesting using the CLI commands listed below.
+
+---
+
+### Production Hardening Success Criteria (Phase 2)
+
+- **SC-H001 (Gate)**: Dependency Management — all dependencies pinned in `poetry.lock` with semantic version ranges, zero high/critical security vulnerabilities detected by pip-audit/CodeQL, and reproducible builds across Linux/macOS/Windows environments verified by deterministic `poetry.lock` hash.
+
+- **SC-H002 (Gate)**: CI/CD Pipeline — GitHub Actions workflow runs successfully across Python 3.10, 3.11, 3.12 matrix with unit tests achieving ≥80% coverage, integration tests passing with deterministic fixtures, security scans (Bandit, CodeQL, pip-audit) reporting zero critical issues, and automated SBOM generation on release tags.
+
+- **SC-H003 (Target)**: Test Quality — unit tests separated from integration tests via pytest markers (`@pytest.mark.unit`, `@pytest.mark.integration`), brittle assertions eliminated (tolerance-based comparisons), property-based tests added for core functions (Hypothesis), and deterministic test fixtures implemented using frozen data snapshots.
+
+- **SC-H004 (Gate)**: Runtime Observability — structured logging implemented with structlog (JSON format), centralized configuration via pydantic-settings with environment variable support (SPY_* prefix), reproducibility hooks ensure global seed management, and logs capture all critical operations (data loading, training, backtesting, trading decisions).
+
+- **SC-H005 (Target)**: Finance Controls — transaction cost model realistic (<1% cumulative impact on backtest returns), slippage model accounts for volume, NYSE trading calendar prevents weekend/holiday execution, risk limits prevent catastrophic losses (max drawdown ≤20%, daily loss ≤5%), and paper trading functional with Alpaca sandbox environment.
+
+- **SC-H006 (Signal)**: Live Trading Readiness — broker adapter abstraction implemented with base interface supporting order placement/cancellation/status queries, dry-run mode operational (logs trades without execution), monitoring active (optional Prometheus metrics endpoint), and separation of backtest/paper/live modes enforced via configuration flags.
 
 ## Metric Definitions
 
