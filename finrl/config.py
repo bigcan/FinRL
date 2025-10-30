@@ -97,12 +97,12 @@ SPY_PPO_PARAMS = {
     "learning_rate": 3e-4,  # Conservative for noisy financial data
     "clip_range": 0.2,  # Standard PPO clip ratio
     "clip_range_vf": 0.1,
-    "ent_coef": 0.01,  # Low entropy for exploitation
+    "ent_coef": 0.03,  # Slightly higher entropy to maintain exploration
     "vf_coef": 0.5,
     "max_grad_norm": 0.5,
     "gae_lambda": 0.95,
     "use_sde": False,
-    "target_kl": 0.01,  # Early stopping for stability
+    "target_kl": 0.03,  # Relaxed KL threshold for fewer early stops
     "policy_kwargs": {
         "net_arch": [256, 256],  # Moderate capacity
     },

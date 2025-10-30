@@ -41,13 +41,13 @@ PPO_PARAMS = {
     "learning_rate": 3e-4,  # Policy learning rate
     "clip_range": 0.2,  # PPO clip ratio (epsilon)
     "clip_range_vf": 0.1,  # Value function clip range
-    "ent_coef": 0.01,  # Entropy coefficient (exploration bonus)
+    "ent_coef": 0.03,  # Higher entropy bonus to preserve exploration
     "vf_coef": 0.5,  # Value function loss weight
     "max_grad_norm": 0.5,  # Gradient clipping
     "gae_lambda": 0.95,  # GAE (Generalized Advantage Estimation) lambda
     "use_sde": False,  # Stochastic Policy (disabled for simplicity)
     "sde_sample_freq": -1,  # Not used
-    "target_kl": 0.01,  # Target KL divergence (early stopping)
+    "target_kl": 0.03,  # Relaxed KL divergence threshold
     "policy_kwargs": {
         "net_arch": [256, 256],  # Hidden layer sizes
         "activation_fn": "relu",  # ReLU activation (SB3 uses torch.nn.ReLU)
