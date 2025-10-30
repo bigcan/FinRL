@@ -11,6 +11,11 @@ FinRL is a financial reinforcement learning framework implementing a three-layer
 
 The core workflow follows a **train-test-trade** pipeline orchestrated through `train.py`, `test.py`, and `trade.py`.
 
+## Shared Development Log
+- Record cross-assistant findings in `analysis/dev_log.md`.
+- Add new entries at the top with date, agent, summary, and links to commits/models/logs.
+- Leave previous entries intact; append follow-up notes if an item is superseded.
+
 ## Environment Setup
 
 ### Installation

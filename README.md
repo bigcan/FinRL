@@ -300,6 +300,8 @@ Welcome to **AI4Finance** community!
 
 Please check [Contributing Guidances](https://github.com/AI4Finance-Foundation/FinRL-Tutorials/blob/master/Contributing.md).
 
+For day-to-day progress notes, see the shared development log at `analysis/dev_log.md`. Append new entries at the top with date, author, summary, and links to commits or experiment artifacts so every contributor—human or AI assistant—stays aligned.
+
 ### Contributors
 
 Thank you!

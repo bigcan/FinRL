@@ -5,6 +5,11 @@
 - Reusable notebooks live in `examples/`; docs sources in `docs/`; shared figures in `figs/`.
 - Regression checks sit in `unit_tests/` (`environments/`, `downloaders/`). Add new cases next to the code they validate.
 
+## Development Log
+- Use `analysis/dev_log.md` as the shared notebook for Codex and Claude to record experiments, fixes, and decisions.
+- Append new entries at the top, include date, agent, summary, and link to related artifacts instead of pasting large outputs.
+- Do not delete prior notes; add follow-up bullets if results change.
+
 ## Environment Setup & Init
 - Clone the repo, install Poetry, then run `poetry install` from the repository root to create the managed virtualenv.
 - Activate with `poetry shell` or prefix commands with `poetry run`; pip users can call `pip install -e .` for editable imports.
