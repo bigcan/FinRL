@@ -278,6 +278,179 @@ train(
 )
 ```
 
+## Specification Management with Speckit
+
+### Overview
+
+This project uses **speckit** (a structured specification framework) to maintain comprehensive feature specifications in the `specs/` directory. All major features and structural changes MUST be documented using speckit before implementation.
+
+**Philosophy**: Specifications are the single source of truth for feature design, requirements, and implementation plans.
+
+### Speckit Structure
+
+Each feature specification lives in `specs/{feature-number}-{feature-name}/`:
+
+```
+specs/
+└── 1-spy-rl-trading/              # Feature specification directory
+    ├── spec.md                     # Core specification (user stories, requirements, success criteria)
+    ├── plan.md                     # Implementation plan (phases, timeline, goals)
+    ├── tasks.md                    # Task breakdown (T001, T002, etc.)
+    ├── data-model.md               # Entity definitions and relationships
+    ├── research.md                 # Technical research and decisions
+    ├── quickstart.md               # Getting started guide
+    ├── hardening.md                # Production hardening details (if applicable)
+    ├── deployment.md               # Deployment strategies (if applicable)
+    ├── observability.md            # Logging/monitoring (if applicable)
+    └── contracts/                  # Interface contracts
+        ├── API.md                  # API specifications
+        ├── BROKER_ADAPTER.md       # Broker interface
+        ├── TRANSACTION_COST.md     # Cost modeling
+        └── RISK_LIMITS.md          # Risk management
+```
+
+### Core Specification Files
+
+**spec.md** (Required):
+- User stories with acceptance criteria
+- Functional and non-functional requirements
+- Success criteria (measurable outcomes)
+- Assumptions, constraints, and out-of-scope items
+- Testing strategy
+
+**plan.md** (Required):
+- Implementation phases with durations
+- Goals and deliverables
+- Dependencies and risks
+- Timeline and milestones
+
+**tasks.md** (Required):
+- Granular task breakdown (T001, T002, etc.)
+- Task dependencies and estimates
+- Acceptance criteria per task
+- Progress tracking (✅ complete, ⏳ in progress, ❌ blocked)
+
+**contracts/** (Optional):
+- API contracts and interface definitions
+- Data model contracts
+- Integration contracts for external systems
+
+### When to Update Specifications
+
+**ALWAYS update specs when**:
+1. **Adding new features**: Create complete spec before coding
+2. **Structural changes**: Update `spec.md` and `plan.md` with architectural changes
+3. **New phases**: Add phases to `plan.md` and tasks to `tasks.md`
+4. **Production hardening**: Add `hardening.md`, `deployment.md`, `observability.md`
+5. **API changes**: Update `contracts/` with new interfaces
+6. **Success criteria changes**: Update measurable outcomes in `spec.md`
+
+**Example workflow** (SPY RL Trading System hardening):
+```bash
+# 1. User requests production hardening
+# 2. Analyze requirements and create comprehensive hardening plan
+# 3. Update existing spec files (DO NOT create new spec directory)
+#    - tasks.md: Add Phase 7-12 with 40 new tasks (T040-T079)
+#    - plan.md: Add Phase 2 section with goals, timelines
+#    - spec.md: Add hardening goals (G7-G12) and success criteria (SC-H001 to SC-H006)
+# 4. Create supporting docs (hardening.md, deployment.md, observability.md)
+# 5. Create contracts (BROKER_ADAPTER.md, TRANSACTION_COST.md, RISK_LIMITS.md)
+# 6. Commit all spec changes together
+# 7. Implement following spec as single source of truth
+```
+
+### Specification Update Workflow
+
+**Step 1: Identify Scope**
+```bash
+# Determine if changes fit existing spec or need new feature
+# - Extension: Update existing spec (e.g., 1-spy-rl-trading)
+# - New feature: Create new spec directory (e.g., 2-multi-asset-trading)
+```
+
+**Step 2: Update Core Files**
+```bash
+# Update in order:
+# 1. spec.md - Add goals, requirements, success criteria
+# 2. plan.md - Add phases, timeline, dependencies
+# 3. tasks.md - Add granular tasks with estimates
+```
+
+**Step 3: Add Supporting Documentation**
+```bash
+# Create as needed:
+# - hardening.md - Production readiness details
+# - deployment.md - Deployment strategies
+# - observability.md - Logging/monitoring
+# - contracts/*.md - Interface definitions
+```
+
+**Step 4: Commit Specifications**
+```bash
+# Commit spec updates BEFORE implementation
+git add specs/{feature-name}/
+git commit -m "docs: add {feature-name} specifications"
+git push
+```
+
+**Step 5: Implement Following Spec**
+```bash
+# Use spec as single source of truth
+# - Refer to tasks.md for task order
+# - Validate against success criteria in spec.md
+# - Update task status as you progress
+```
+
+### Best Practices
+
+**DO**:
+- ✅ Update specs BEFORE coding
+- ✅ Keep specs and code in sync
+- ✅ Use existing spec directory for extensions
+- ✅ Document all architectural decisions
+- ✅ Define measurable success criteria
+- ✅ Track task progress in tasks.md
+
+**DON'T**:
+- ❌ Skip spec updates for "small changes"
+- ❌ Create new spec for feature extensions
+- ❌ Implement without reviewing spec
+- ❌ Leave specs outdated
+- ❌ Mix multiple features in one spec
+
+### Example: SPY RL Trading System
+
+**Phase 1-6** (Initial Implementation):
+- Created `specs/1-spy-rl-trading/` with complete specifications
+- Implemented 37/39 tasks following spec
+- Achieved production-ready MVP
+
+**Phase 7-12** (Production Hardening):
+- UPDATED existing `1-spy-rl-trading` spec (not new directory)
+- Added 40 new tasks (T040-T079) to `tasks.md`
+- Added Phase 2 section to `plan.md`
+- Added hardening goals to `spec.md`
+- Created `hardening.md`, `deployment.md`, `observability.md`
+- Created contract files for broker, costs, risk limits
+- Ready for Phase 7-12 implementation
+
+### Specification-Driven Development Benefits
+
+1. **Clarity**: Everyone understands what's being built
+2. **Traceability**: Link code to requirements
+3. **Quality**: Success criteria defined upfront
+4. **Documentation**: Specs serve as comprehensive docs
+5. **Planning**: Accurate estimates and timelines
+6. **Review**: Easy to review before implementation
+7. **Maintenance**: Single source of truth for features
+
+### Reference
+
+For detailed speckit usage, see:
+- Example: `specs/1-spy-rl-trading/` (complete spec structure)
+- Tasks format: `specs/1-spy-rl-trading/tasks.md`
+- Plan format: `specs/1-spy-rl-trading/plan.md`
+
 ## Performance Considerations
 
 - Use `env_stocktrading_np.py` for NumPy-optimized training (2-3x faster)
@@ -300,8 +473,10 @@ train(
 - Validate data shapes after `df_to_array()` conversion
 
 ## Active Technologies
-- Python 3.10+ (FinRL requirement) (1-spy-rl-trading)
-- CSV/Parquet files (local disk) for historical OHLCV data and trained models; TensorBoard logs for training artifacts (1-spy-rl-trading)
+- Python 3.10+ (FinRL requirement)
+ (1-spy-rl-trading)
+- CSV/Parquet files (local disk) for historical OHLCV data and trained models; TensorBoard logs for training artifacts
+ (1-spy-rl-trading)
 
 ## Recent Changes
 - 1-spy-rl-trading: Added Python 3.10+ (FinRL requirement)
